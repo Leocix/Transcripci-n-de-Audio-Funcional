@@ -16,6 +16,8 @@
   const progressBar = document.getElementById('progressBar');
   const speakerInfo = document.getElementById('speakerInfo');
   const currentSpeakerLabel = document.getElementById('currentSpeakerLabel');
+  const clearBtn = document.getElementById('clearBtn');
+  const numSpeakersSelect = document.getElementById('numSpeakersSelect');
 
   let mediaRecorder;
   let ws;
@@ -24,21 +26,46 @@
   let isUsingWebSpeech = false;
   let currentSpeaker = 1; // Empezar siempre con Persona-01
   let speakerCount = 1;
+  let maxSpeakers = 2; // Número máximo de hablantes configurados
 
   // Función para actualizar UI del hablante
   function updateSpeakerUI() {
     if (currentSpeakerLabel) {
       currentSpeakerLabel.textContent = `Persona-${String(currentSpeaker).padStart(2, '0')}`;
-      const colors = ['#667eea', '#f5576c', '#4facfe'];
-      currentSpeakerLabel.style.color = colors[(currentSpeaker - 1) % 3];
+      const colors = ['#667eea', '#f5576c', '#4facfe', '#43e97b', '#fa709a'];
+      currentSpeakerLabel.style.color = colors[(currentSpeaker - 1) % colors.length];
       currentSpeakerLabel.style.fontWeight = 'bold';
     }
+  }
+  
+  // Botón para limpiar transcripción
+  if (clearBtn) {
+    clearBtn.onclick = () => {
+      if (confirm('¿Estás seguro de que quieres limpiar toda la transcripción?')) {
+        transcriptEl.value = '';
+        currentSpeaker = 1;
+        speakerCount = 1;
+        updateSpeakerUI();
+        showStatus('🗑️ Transcripción limpiada', 'success');
+        setTimeout(hideStatus, 2000);
+      }
+    };
+  }
+  
+  // Selector de número de hablantes
+  if (numSpeakersSelect) {
+    numSpeakersSelect.onchange = () => {
+      maxSpeakers = parseInt(numSpeakersSelect.value);
+      showStatus(`👥 Configurado para ${maxSpeakers} persona${maxSpeakers > 1 ? 's' : ''}`, 'success');
+      setTimeout(hideStatus, 2000);
+    };
   }
   
   // Botón para cambiar hablante manualmente
   if (changeSpeakerBtn) {
     changeSpeakerBtn.onclick = () => {
-      currentSpeaker = (currentSpeaker % 3) + 1; // Alterna entre 1, 2, 3
+      // Ciclar entre los hablantes configurados
+      currentSpeaker = (currentSpeaker % maxSpeakers) + 1;
       if (currentSpeaker > speakerCount) {
         speakerCount = currentSpeaker;
       }
