@@ -29,7 +29,11 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 const upload = multer({ 
   dest: path.join(TMP_DIR, 'uploads'),
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100 MB
+    fileSize: 100 * 1024 * 1024, // 100 MB máximo por archivo
+    files: 1, // Solo 1 archivo a la vez
+    fields: 10, // Máximo 10 campos en el form
+    fieldSize: 10 * 1024 * 1024, // 10 MB por campo
+    parts: 100 // Máximo 100 partes en multipart
   },
   fileFilter: (req, file, cb) => {
     // Permitir audio y video
@@ -204,8 +208,32 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     });
   } catch (err) {
     console.error('Upload processing error', err);
-    res.status(500).json({ error: 'Processing failed' });
+    
+    // Manejar errores de Multer específicamente
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ 
+        error: 'Archivo demasiado grande. Máximo permitido: 100 MB',
+        maxSize: '100 MB'
+      });
+    }
+    
+    res.status(500).json({ error: 'Processing failed: ' + err.message });
   }
+});
+
+// Manejador de errores de Multer
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        error: 'Archivo demasiado grande',
+        message: 'El archivo excede el límite de 100 MB. Comprime el video o divídelo en partes más pequeñas.',
+        maxSize: '100 MB'
+      });
+    }
+    return res.status(400).json({ error: error.message });
+  }
+  next(error);
 });
 
 // PDF generation endpoint
