@@ -15,6 +15,7 @@
   const fileName = document.getElementById('fileName');
   const progressContainer = document.getElementById('progressContainer');
   const progressBar = document.getElementById('progressBar');
+  const startRealtimeBtn = document.getElementById('startRealtimeBtn');
   // Ensure progressPhase element exists (in case index.html wasn't updated or is cached)
   let progressPhase = document.getElementById('progressPhase');
   if (!progressPhase) {
@@ -50,6 +51,12 @@
   const clientId = 'cli-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
   // processingInterval moved to outer scope so ws messages can cancel it
   let processingInterval = null;
+  // Realtime streaming variables
+  let wsRealtime = null;
+  let audioContext = null;
+  let audioStream = null;
+  let audioProcessor = null;
+  let realtimeActive = false;
 
   // Función para actualizar UI del hablante
   function updateSpeakerUI() {
@@ -220,6 +227,40 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
+  // Downsample Float32 audio buffer to target sample rate and convert to Int16
+  function downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
+    if (outputSampleRate === inputSampleRate) return buffer;
+    const sampleRateRatio = inputSampleRate / outputSampleRate;
+    const newLength = Math.round(buffer.length / sampleRateRatio);
+    const result = new Float32Array(newLength);
+    let offsetResult = 0;
+    let offsetBuffer = 0;
+    while (offsetResult < result.length) {
+      const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+      let accum = 0, count = 0;
+      for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+        accum += buffer[i];
+        count++;
+      }
+      result[offsetResult] = accum / count;
+      offsetResult++;
+      offsetBuffer = nextOffsetBuffer;
+    }
+    return result;
+  }
+
+  function floatTo16BitPCM(float32Array) {
+    const l = float32Array.length;
+    const buf = new ArrayBuffer(l * 2);
+    const view = new DataView(buf);
+    let offset = 0;
+    for (let i = 0; i < l; i++, offset += 2) {
+      let s = Math.max(-1, Math.min(1, float32Array[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+    return buf;
+  }
+
   function connectWS() {
     if (!isUsingWebSpeech) {
       ws = new WebSocket(((location.protocol === 'https:')? 'wss://' : 'ws://') + location.host);
@@ -261,6 +302,122 @@
         showStatus('Conexión WebSocket cerrada', 'error');
       };
     }
+  }
+
+  // Start realtime ASR: capture mic, resample to 16kHz PCM16 and send via a dedicated WS
+  async function startRealtimeASR() {
+    if (realtimeActive) return;
+    if (!navigator.mediaDevices) {
+      showStatus('MediaDevices no soportado en este navegador', 'error');
+      return;
+    }
+    try {
+      audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const inputSampleRate = audioContext.sampleRate || 48000;
+
+      const source = audioContext.createMediaStreamSource(audioStream);
+      const processorSize = 4096;
+      audioProcessor = audioContext.createScriptProcessor(processorSize, 1, 1);
+
+      wsRealtime = new WebSocket(((location.protocol === 'https:') ? 'wss://' : 'ws://') + location.host);
+      wsRealtime.binaryType = 'arraybuffer';
+      wsRealtime.onopen = () => {
+        console.log('WS realtime open');
+        wsRealtime.send(JSON.stringify({ type: 'realtime-register', sampleRate: 16000 }));
+        showStatus('🔴 Realtime ASR conectado', 'success');
+        setTimeout(hideStatus, 1500);
+      };
+      wsRealtime.onmessage = (ev) => {
+        let parsed;
+        try { parsed = JSON.parse(ev.data); } catch (e) { return; }
+        if (parsed.type === 'realtime-ready') {
+          // server ready
+          realtimeActive = true;
+          startRealtimeBtn.disabled = true;
+          stopBtn.disabled = false;
+          status.textContent = 'Grabando (Realtime ASR)...';
+          status.classList.add('recording');
+        }
+        if (parsed.type === 'realtime-partial') {
+          // show interim in a lighter way (do not commit)
+          const last = transcriptEl.value.split('\n').filter(Boolean).slice(-1)[0] || '';
+          // show partial as a grey placeholder by updating statusArea
+          const tmp = parsed.text || '';
+          showStatus('🔁 Interim: ' + tmp, 'info');
+        }
+        if (parsed.type === 'realtime-final') {
+          // append final text
+          if (parsed.text) {
+            transcriptEl.value += parsed.text + '\n';
+          }
+          hideStatus();
+        }
+        if (parsed.type === 'realtime-unavailable') {
+          showStatus('Realtime ASR no disponible: ' + (parsed.message || ''), 'error');
+        }
+      };
+      wsRealtime.onerror = (err) => {
+        console.error('WS realtime error', err);
+        showStatus('Error de conexión realtime', 'error');
+      };
+      wsRealtime.onclose = () => {
+        console.log('WS realtime closed');
+        realtimeActive = false;
+        startRealtimeBtn.disabled = false;
+        stopBtn.disabled = true;
+        status.textContent = 'Idle';
+        status.classList.remove('recording');
+        showStatus('Realtime desconectado', 'info');
+      };
+
+      audioProcessor.onaudioprocess = (evt) => {
+        if (!wsRealtime || wsRealtime.readyState !== WebSocket.OPEN) return;
+        const input = evt.inputBuffer.getChannelData(0);
+        const downsampled = downsampleBuffer(input, inputSampleRate, 16000);
+        const pcm16 = floatTo16BitPCM(downsampled);
+        try {
+          wsRealtime.send(pcm16);
+        } catch (e) {
+          console.warn('Failed to send realtime chunk', e);
+        }
+      };
+
+      source.connect(audioProcessor);
+      audioProcessor.connect(audioContext.destination);
+
+      // keep references to stop later
+      audioContext._source = source;
+      audioContext._processor = audioProcessor;
+      showStatus('🔴 Capturando audio para Realtime ASR...', 'info');
+    } catch (e) {
+      console.error('Error starting realtime ASR', e);
+      showStatus('Error al iniciar Realtime ASR: ' + e.message, 'error');
+    }
+  }
+
+  function stopRealtimeASR() {
+    try {
+      if (wsRealtime && wsRealtime.readyState === WebSocket.OPEN) {
+        try { wsRealtime.send(JSON.stringify({ type: 'realtime-end' })); } catch (e) {}
+        wsRealtime.close();
+      }
+    } catch (e) {}
+    try {
+      if (audioContext) {
+        if (audioContext._processor) audioContext._processor.disconnect();
+        if (audioContext._source) audioContext._source.disconnect();
+        audioContext.close();
+      }
+    } catch (e) {}
+    try { if (audioStream) audioStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+    audioContext = null; audioStream = null; audioProcessor = null; wsRealtime = null; realtimeActive = false;
+    startRealtimeBtn.disabled = false;
+    stopBtn.disabled = true;
+    status.textContent = 'Idle';
+    status.classList.remove('recording');
+    showStatus('Realtime detenido', 'info');
+    setTimeout(hideStatus, 1200);
   }
 
   startBtn.onclick = async () => {
@@ -329,6 +486,16 @@
     }
   };
 
+  // Start realtime button
+  if (startRealtimeBtn) {
+    startRealtimeBtn.onclick = async () => {
+      // If Web Speech API available, user may prefer it — but realtime ASR uses server Vosk
+      await startRealtimeASR();
+      // disable other start button to avoid conflicts
+      startBtn.disabled = true;
+    };
+  }
+
   stopBtn.onclick = () => {
     // Detener Web Speech API
     if (recognition && isUsingWebSpeech) {
@@ -348,6 +515,8 @@
       mediaRecorder.stop();
       mediaRecorder.stream.getTracks().forEach(track => track.stop());
     }
+    // Stop realtime ASR if active
+    try { if (realtimeActive) stopRealtimeASR(); } catch (e) {}
     
     startBtn.disabled = false;
     stopBtn.disabled = true;

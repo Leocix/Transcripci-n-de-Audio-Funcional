@@ -234,3 +234,32 @@ Desarrollado con ❤️
 ---
 
 **¿Preguntas?** Abre un [Issue](https://github.com/TU_USUARIO/transcripcion-audio/issues)
+
+## 🟢 Realtime ASR (opcional, local) — Vosk
+
+Si quieres usar transcripción en tiempo real sin servicios externos, puedes instalar Vosk y un modelo local. El servidor intentará usar Vosk si está disponible y el cliente puede iniciar una conexión realtime.
+
+Instalación (Node):
+
+```pwsh
+# Instala binding de Vosk
+npm install vosk
+
+# Crea carpeta para modelos
+mkdir models
+cd models
+# Descarga un modelo pequeño (ejemplo):
+# https://alphacephei.com/vosk/models
+# Descomprimir en ./models/vosk-model
+```
+
+Notas:
+- Coloca el modelo en `./models/vosk-model` (ruta esperada por el servidor).
+- En Windows es recomendable usar WSL si tienes problemas compilando dependencias.
+- Si Vosk no está instalado o no encuentra el modelo, la funcionalidad realtime quedará deshabilitada y el servidor enviará un mensaje de error al cliente.
+
+Uso en la app:
+- Abre la página y pulsa **"🔴 Realtime ASR"** para enviar audio en tiempo real al servidor.
+- El servidor devolverá mensajes `realtime-partial` y `realtime-final` vía WebSocket.
+
+Si quieres que te ayude a descargar un modelo y probar localmente, dime y lo añadimos al Dockerfile o a las instrucciones de setup.

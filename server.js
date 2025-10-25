@@ -18,6 +18,15 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 // Map to keep track of websocket clients by clientId (sent from browser)
 const wsClients = new Map();
+// Vosk model (optional - used for realtime ASR)
+let vosk;
+let voskModel = null;
+const VOSK_MODEL_PATH = path.join(__dirname, 'models', 'vosk-model');
+try {
+  vosk = require('vosk');
+} catch (e) {
+  console.warn('Vosk no está instalado. Realtime ASR no estará disponible hasta instalar dependency `vosk`.');
+}
 
 const TMP_DIR = path.join(__dirname, 'tmp');
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR);
@@ -72,6 +81,27 @@ wss.on('connection', (ws) => {
   console.log('WS connected', connId);
 
   ws.on('message', async (msg) => {
+    // If this connection was registered for realtime and msg is binary, handle audio buffer
+    try {
+      if (ws.isRealtime && msg && msg instanceof Buffer) {
+        // Ensure model loaded
+        if (!vosk || !voskModel || !ws.recognizer) return;
+        const rec = ws.recognizer;
+        // Vosk expects 16-bit PCM little-endian
+        const ok = rec.acceptWaveform(msg);
+        if (ok) {
+          const res = rec.result();
+          ws.send(JSON.stringify({ type: 'realtime-final', text: res.text || '' }));
+        } else {
+          const partial = rec.partialResult();
+          ws.send(JSON.stringify({ type: 'realtime-partial', text: partial.partial || '' }));
+        }
+        return;
+      }
+    } catch (e) {
+      console.error('Error processing realtime audio buffer', e?.message || e);
+    }
+
     // Expect JSON messages with type and data
     let parsed;
     try { parsed = JSON.parse(msg); } catch (e) { return; }
@@ -83,7 +113,51 @@ wss.on('connection', (ws) => {
       console.log('WS registered clientId=', parsed.clientId);
       return;
     }
+    
+    // Realtime registration for ASR streaming
+    if (parsed.type === 'realtime-register') {
+      // If Vosk not available, notify client
+      if (!vosk) {
+        ws.send(JSON.stringify({ type: 'realtime-unavailable', message: 'Vosk dependency not installed on server.' }));
+        return;
+      }
+      // Load model lazily
+      try {
+        if (!voskModel) {
+          if (!fs.existsSync(VOSK_MODEL_PATH)) {
+            ws.send(JSON.stringify({ type: 'realtime-unavailable', message: `Vosk model not found at ${VOSK_MODEL_PATH}` }));
+            return;
+          }
+          voskModel = new vosk.Model(VOSK_MODEL_PATH);
+          console.log('Vosk model loaded from', VOSK_MODEL_PATH);
+        }
+        const sampleRate = parsed.sampleRate || 16000;
+        ws.isRealtime = true;
+        ws.sampleRate = sampleRate;
+        ws.recognizer = new vosk.Recognizer({ model: voskModel, sampleRate });
+        ws.recognizer.setMaxAlternatives(0);
+        ws.recognizer.setWords(true);
+        ws.send(JSON.stringify({ type: 'realtime-ready', sampleRate }));
+      } catch (e) {
+        console.error('Failed to init Vosk model/recognizer', e?.message || e);
+        ws.send(JSON.stringify({ type: 'realtime-unavailable', message: 'Failed to init Vosk model' }));
+      }
+      return;
+    }
 
+    if (parsed.type === 'realtime-end') {
+      // Send final result and free recognizer
+      try {
+        if (ws.recognizer) {
+          const final = ws.recognizer.finalResult();
+          ws.send(JSON.stringify({ type: 'realtime-final', text: final.text || '' }));
+          ws.recognizer.free();
+          delete ws.recognizer;
+          ws.isRealtime = false;
+        }
+      } catch (e) { console.warn('Error finalizing realtime recognizer', e); }
+      return;
+    }
     if (parsed.type === 'chunk' && parsed.data) {
       // data is base64 string of a blob (webm/mp4)
       const b64 = parsed.data.replace(/^data:.+;base64,/, '');
@@ -111,6 +185,13 @@ wss.on('connection', (ws) => {
     if (ws.clientId && wsClients.has(ws.clientId)) {
       wsClients.delete(ws.clientId);
     }
+    // cleanup realtime recognizer if any
+    try {
+      if (ws.recognizer) {
+        try { ws.recognizer.free(); } catch (e) {}
+        delete ws.recognizer;
+      }
+    } catch (e) {}
   });
 });
 
