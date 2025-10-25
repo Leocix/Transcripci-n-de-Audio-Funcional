@@ -1,0 +1,55 @@
+📄 Archivo: c82f36627e40e0aff9825758fe0efa6e.wav (1.29 MB)
+📅 Fecha: 25/10/2025, 6:03:07
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ TOKEN DE HUGGING FACE NO CONFIGURADO
+
+Para transcribir archivos necesitas configurar un token de Hugging Face.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 CÓMO OBTENER TOKEN (2 minutos, gratis):
+
+1. Crear cuenta: https://huggingface.co/join
+   • NO requiere tarjeta de crédito
+   • Usa email o cuenta de Google
+
+2. Generar token: https://huggingface.co/settings/tokens
+   • Click "New token"
+   • Nombre: "transcripcion"
+   • Tipo: "read"
+   • Copiar token (empieza con "hf_...")
+
+3. Configurar (PowerShell):
+   echo "HUGGINGFACE_API_KEY=hf_tu_token_aqui" > .env
+
+4. Reiniciar:
+   docker compose down
+   docker compose up --build -d
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 ALTERNATIVAS SI NO QUIERES CREAR CUENTA:
+
+1. AssemblyAI (gratis con límites)
+   • 5 horas gratis al mes
+   • https://www.assemblyai.com/
+
+2. Deepgram (gratis con límites)
+   • $200 de crédito gratis
+   • https://deepgram.com/
+
+3. Google Cloud Speech-to-Text
+   • 60 minutos gratis al mes
+   • Requiere tarjeta de crédito
+
+4. Azure Speech Services
+   • 5 horas gratis al mes
+   • Requiere tarjeta de crédito
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 RECOMENDACIÓN: Hugging Face es la opción más fácil y sin tarjeta.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

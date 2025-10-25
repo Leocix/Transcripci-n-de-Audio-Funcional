@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+require('dotenv').config(); // Cargar variables de entorno desde .env
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
