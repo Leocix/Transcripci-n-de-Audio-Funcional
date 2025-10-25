@@ -1,0 +1,24 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:24.000
+❌ Error al procesar el archivo de audio
+
+El archivo no pudo ser procesado por Hugging Face.
+
+00:00:24.000 --> 00:00:48.000
+✅ POSIBLES CAUSAS:
+
+1️⃣ Archivo muy grande (máximo 25 MB)
+   • Tamaño actual: 1.29 MB
+   • Reduce la calidad o duración del audio
+
+2️⃣ Formato de audio incompatible
+   • Formatos soportados: MP3, WAV, FLAC, OGG, M4A
+   • Convierte en: https://convertio.co/es/
+
+3️⃣ Archivo corrupto o inválido
+   • Verifica que el archivo se reproduzca correctamente
+   • Prueba con otro archivo
+
+💡 SOLUCIÓN RÁPIDA: Usa la grabación en tiempo real (sin límites de tamaño)
+

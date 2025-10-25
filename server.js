@@ -24,8 +24,40 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/tmp', express.static(TMP_DIR));
 app.use(express.json());
 
-// Multer for file uploads
-const upload = multer({ dest: path.join(TMP_DIR, 'uploads') });
+// Multer for file uploads - Aumentado a 100MB y permitir videos
+const upload = multer({ 
+  dest: path.join(TMP_DIR, 'uploads'),
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100 MB
+  },
+  fileFilter: (req, file, cb) => {
+    // Permitir audio y video
+    const allowedMimes = [
+      // Audio
+      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave', 'audio/x-wav',
+      'audio/flac', 'audio/ogg', 'audio/m4a', 'audio/x-m4a', 'audio/webm',
+      'audio/aac', 'audio/x-aac',
+      // Video
+      'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo',
+      'video/x-matroska', 'video/webm', 'video/avi'
+    ];
+    
+    const ext = file.originalname.toLowerCase();
+    const allowedExts = [
+      '.mp3', '.wav', '.flac', '.ogg', '.m4a', '.webm', '.aac',
+      '.mp4', '.avi', '.mov', '.mkv', '.mpeg', '.mpg'
+    ];
+    
+    const hasValidMime = allowedMimes.includes(file.mimetype);
+    const hasValidExt = allowedExts.some(e => ext.endsWith(e));
+    
+    if (hasValidMime || hasValidExt) {
+      cb(null, true);
+    } else {
+      cb(new Error('Formato no soportado. Usa: MP3, WAV, FLAC, OGG, M4A, AAC, MP4, AVI, MOV, MKV'));
+    }
+  }
+});
 
 // WebSocket handling for real-time chunks
 wss.on('connection', (ws) => {
