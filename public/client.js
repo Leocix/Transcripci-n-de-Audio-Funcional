@@ -1,6 +1,7 @@
 (() => {
   const startBtn = document.getElementById('startBtn');
   const stopBtn = document.getElementById('stopBtn');
+  const changeSpeakerBtn = document.getElementById('changeSpeakerBtn');
   const status = document.getElementById('status');
   const transcriptEl = document.getElementById('transcript');
   const fileInput = document.getElementById('fileInput');
@@ -13,6 +14,8 @@
   const fileName = document.getElementById('fileName');
   const progressContainer = document.getElementById('progressContainer');
   const progressBar = document.getElementById('progressBar');
+  const speakerInfo = document.getElementById('speakerInfo');
+  const currentSpeakerLabel = document.getElementById('currentSpeakerLabel');
 
   let mediaRecorder;
   let ws;
@@ -21,54 +24,28 @@
   let isUsingWebSpeech = false;
   let currentSpeaker = 1; // Empezar siempre con Persona-01
   let speakerCount = 1;
-  let lastSpeakTime = 0;
-  let speakerHistory = []; // Historial de frases por hablante
-  const SPEAKER_CHANGE_THRESHOLD = 8000; // 8 segundos para cambiar de hablante (más tiempo)
-  const MIN_WORDS_FOR_CHANGE = 15; // Mínimo de palabras antes de considerar cambio
-  
-  // Elementos adicionales
-  const speakerInfo = document.getElementById('speakerInfo');
-  const currentSpeakerLabel = document.getElementById('currentSpeakerLabel');
 
   // Función para actualizar UI del hablante
   function updateSpeakerUI() {
     if (currentSpeakerLabel) {
       currentSpeakerLabel.textContent = `Persona-${String(currentSpeaker).padStart(2, '0')}`;
-      currentSpeakerLabel.style.color = currentSpeaker === 1 ? '#667eea' : currentSpeaker === 2 ? '#f5576c' : '#4facfe';
+      const colors = ['#667eea', '#f5576c', '#4facfe'];
+      currentSpeakerLabel.style.color = colors[(currentSpeaker - 1) % 3];
+      currentSpeakerLabel.style.fontWeight = 'bold';
     }
   }
-
-  // Función mejorada para detectar cambio de hablante
-  function detectSpeakerChange(transcript) {
-    const now = Date.now();
-    const timeSinceLastSpeak = now - lastSpeakTime;
-    const wordCount = transcript.trim().split(/\s+/).length;
-    
-    // Si es la primera frase, usar Persona-01
-    if (speakerHistory.length === 0) {
-      currentSpeaker = 1;
-      lastSpeakTime = now;
-      return false; // No cambiar
-    }
-    
-    // Solo considerar cambio si:
-    // 1. Han pasado más de 8 segundos
-    // 2. Y la frase tiene suficientes palabras (indica intervención completa)
-    if (timeSinceLastSpeak > SPEAKER_CHANGE_THRESHOLD && wordCount >= MIN_WORDS_FOR_CHANGE) {
-      // Alternar entre personas (máximo 3)
-      const lastSpeaker = currentSpeaker;
-      currentSpeaker = (currentSpeaker % 3) + 1;
-      
+  
+  // Botón para cambiar hablante manualmente
+  if (changeSpeakerBtn) {
+    changeSpeakerBtn.onclick = () => {
+      currentSpeaker = (currentSpeaker % 3) + 1; // Alterna entre 1, 2, 3
       if (currentSpeaker > speakerCount) {
         speakerCount = currentSpeaker;
       }
-      
-      lastSpeakTime = now;
-      return true; // Hubo cambio
-    }
-    
-    lastSpeakTime = now;
-    return false; // Mismo hablante
+      updateSpeakerUI();
+      showStatus(`🔄 Cambiado a Persona-${String(currentSpeaker).padStart(2, '0')}`, 'success');
+      setTimeout(hideStatus, 2000);
+    };
   }
 
   // Detectar navegador
@@ -101,21 +78,8 @@
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          const changed = detectSpeakerChange(transcript);
-          
-          if (changed) {
-            updateSpeakerUI(); // Actualizar UI cuando cambia
-          }
-          
+          // NO detectar cambio automático - solo usar hablante actual
           const speakerTag = `Persona-${String(currentSpeaker).padStart(2, '0')}`;
-          
-          // Guardar en historial
-          speakerHistory.push({
-            speaker: currentSpeaker,
-            text: transcript,
-            timestamp: Date.now()
-          });
-          
           finalTranscript += `[${speakerTag}] ${transcript}\n`;
         } else {
           interimTranscript += transcript;
@@ -228,8 +192,6 @@
     // Resetear hablantes al iniciar nueva grabación
     currentSpeaker = 1; // Siempre empezar con Persona-01
     speakerCount = 1;
-    speakerHistory = [];
-    lastSpeakTime = Date.now();
     
     // Priorizar Web Speech API (gratuito)
     if (recognition && isUsingWebSpeech) {
@@ -237,6 +199,7 @@
         recognition.start();
         startBtn.disabled = true;
         stopBtn.disabled = false;
+        changeSpeakerBtn.disabled = false; // Habilitar botón de cambio
         status.textContent = 'Grabando (Reconocimiento gratuito)...';
         status.classList.add('recording');
         
@@ -292,9 +255,12 @@
       recognition.stop();
     }
     
-    // Ocultar info del hablante
+    // Ocultar info del hablante y deshabilitar botón
     if (speakerInfo) {
       speakerInfo.style.display = 'none';
+    }
+    if (changeSpeakerBtn) {
+      changeSpeakerBtn.disabled = true;
     }
     
     // Detener MediaRecorder

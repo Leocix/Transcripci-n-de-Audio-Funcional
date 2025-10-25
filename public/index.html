@@ -329,7 +329,14 @@
         <div id="controls">
           <button id="startBtn">▶ Iniciar grabación</button>
           <button id="stopBtn" disabled>⏹ Detener</button>
+          <button id="changeSpeakerBtn" disabled style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); margin-left: 10px;">
+            🔄 Cambiar Hablante
+          </button>
           <span id="status">Idle</span>
+        </div>
+        <div id="speakerInfo" style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; display: none; border-left: 4px solid #667eea;">
+          <strong>🎤 Hablante actual:</strong> <span id="currentSpeakerLabel">Persona-01</span><br>
+          <small style="color: #6c757d;">Presiona "🔄 Cambiar Hablante" cuando otra persona vaya a hablar</small>
         </div>
       </div>
 

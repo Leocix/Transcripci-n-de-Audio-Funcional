@@ -1,0 +1,6 @@
+1
+00:00:00,000 --> 00:00:26,000
+Error: "\n                Content type \"None\" not supported.\n                Supported content types are:\n                application/json, application/json; charset=UTF-8, text/csv, text/plain, image/png, image/jpeg, image/jpg, image/tiff, image/bmp, image/gif, image/webp, image/x-image, audio/x-flac, audio/flac, audio/mpeg, audio/x-mpeg-3, audio/wave, audio/wav, audio/x-wav, audio/ogg, audio/x-audio, audio/webm, audio/webm;codecs=opus, audio/AMR, audio/amr, audio/AMR-WB, audio/AMR-WB+, audio/m4a, audio/x-m4a\n            "
+
+💡 Usa la grabación en tiempo real como alternativa.
+
