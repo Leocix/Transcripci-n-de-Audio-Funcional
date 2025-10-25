@@ -4,8 +4,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Se puede definir en un fichero .env o exportar en la shell antes de docker-compose
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+      - PORT=3000
     volumes:
       - ./tmp:/app/tmp
     restart: unless-stopped
