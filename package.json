@@ -1,0 +1,26 @@
+{
+  "name": "realtime-transcription-prototype",
+  "version": "0.2.0",
+  "description": "Transcripción gratuita usando Web Speech API del navegador",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.13.0",
+    "multer": "^1.4.5-lts.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "ffmpeg-static": "^5.1.0",
+    "pdfkit": "^0.13.0",
+    "@huggingface/inference": "^2.6.4",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

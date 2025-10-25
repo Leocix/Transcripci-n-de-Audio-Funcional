@@ -1,0 +1,391 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Transcripción en tiempo real</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body { 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        padding: 40px;
+      }
+      
+      h2 {
+        color: #667eea;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 2em;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+      }
+      
+      .section {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        border: 1px solid #e9ecef;
+      }
+      
+      .section-title {
+        color: #495057;
+        font-size: 1.2em;
+        margin-bottom: 15px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      
+      #controls {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+      
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      }
+      
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      button:active:not(:disabled) {
+        transform: translateY(0);
+      }
+      
+      #status {
+        padding: 8px 16px;
+        background: #e9ecef;
+        border-radius: 20px;
+        font-weight: 600;
+        color: #495057;
+      }
+      
+      #status.recording {
+        background: #ff4757;
+        color: white;
+        animation: pulse 1.5s infinite;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+      
+      .file-upload-area {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .file-input-wrapper {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      
+      input[type="file"] {
+        flex: 1;
+        min-width: 200px;
+        padding: 10px;
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        cursor: pointer;
+        background: white;
+      }
+      
+      input[type="file"]::-webkit-file-upload-button {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      
+      .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+      
+      input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+      }
+      
+      textarea {
+        width: 100%;
+        min-height: 300px;
+        padding: 15px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 16px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        resize: vertical;
+        background: #ffffff;
+      }
+      
+      textarea:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+      
+      .download-section {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      
+      select {
+        padding: 10px 15px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        background: white;
+      }
+      
+      select:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+      
+      #statusArea {
+        padding: 15px;
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        font-weight: 600;
+        text-align: center;
+        display: none;
+      }
+      
+      #statusArea.active {
+        display: block;
+      }
+      
+      #statusArea.error {
+        background: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+      }
+      
+      #statusArea.success {
+        background: #d4edda;
+        border-color: #28a745;
+        color: #155724;
+      }
+      
+      .progress-container {
+        width: 100%;
+        background: #e9ecef;
+        border-radius: 10px;
+        height: 25px;
+        overflow: hidden;
+        margin-top: 10px;
+        display: none;
+      }
+      
+      .progress-container.active {
+        display: block;
+      }
+      
+      .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        width: 0%;
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 12px;
+      }
+      
+      #history {
+        list-style: none;
+      }
+      
+      #history li {
+        padding: 12px 15px;
+        background: white;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+      
+      #history li:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+      
+      .file-name {
+        color: #667eea;
+        font-weight: 600;
+        font-size: 14px;
+        word-break: break-all;
+      }
+      
+      .alert-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        text-align: center;
+        font-size: 14px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      }
+      
+      .speaker-tag {
+        display: inline-block;
+        padding: 4px 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-right: 8px;
+        margin-bottom: 4px;
+      }
+      
+      .speaker-1 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      
+      .speaker-2 {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+      
+      .speaker-3 {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      }
+      
+      code {
+        background: rgba(0,0,0,0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: 'Consolas', monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>🎙️ Transcripción de Audio a Texto</h2>
+      
+      <div class="alert-info">
+        <strong>💡 Instrucciones:</strong> Sube archivos con token de Hugging Face o usa Chrome/Edge para grabación en tiempo real
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          🎤 Grabación en Tiempo Real
+          <span style="font-size: 12px; color: #6c757d; font-weight: normal;">(Requiere Chrome o Edge)</span>
+        </div>
+        <div id="controls">
+          <button id="startBtn">▶ Iniciar grabación</button>
+          <button id="stopBtn" disabled>⏹ Detener</button>
+          <span id="status">Idle</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          📁 Subir Archivo de Audio/Video
+          <span style="font-size: 12px; color: #6c757d; font-weight: normal;">(Requiere token de Hugging Face)</span>
+        </div>
+        <div style="background: #fff3cd; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; font-size: 14px;">
+          � <strong>Necesitas token:</strong> Lee <code>HUGGING-FACE-GRATIS.md</code> para obtenerlo (2 min, gratis)
+        </div>
+        <div class="file-upload-area">
+          <div class="file-input-wrapper">
+            <input id="fileInput" type="file" accept="audio/*,video/*" />
+            <span class="file-name" id="fileName"></span>
+          </div>
+          <label class="checkbox-label">
+            <input id="preciseCheckbox" type="checkbox" checked />
+            <span>Usar timestamps precisos si están disponibles</span>
+          </label>
+          <button id="uploadBtn">📤 Subir y transcribir</button>
+          <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar">0%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Transcripción</div>
+        <textarea id="transcript" readonly placeholder="La transcripción aparecerá aquí..."></textarea>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Descargar Transcripción</div>
+        <div class="download-section">
+          <label>
+            Formato: 
+            <select id="formatSelect">
+              <option value="txt">TXT</option>
+              <option value="pdf">PDF</option>
+              <option value="srt">SRT</option>
+              <option value="vtt">VTT</option>
+            </select>
+          </label>
+          <button id="downloadBtn">💾 Descargar</button>
+        </div>
+      </div>
+
+      <div id="statusArea"></div>
+
+      <div class="section">
+        <div class="section-title">Historial</div>
+        <ul id="history"></ul>
+      </div>
+    </div>
+
+    <script src="/client.js"></script>
+  </body>
+</html>

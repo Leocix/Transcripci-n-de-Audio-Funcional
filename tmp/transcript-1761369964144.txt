@@ -1,0 +1,79 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎙️ TRANSCRIPCIÓN GRATUITA - Web Speech API
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 Archivo: 31abcfdf9b0ef083dbb46a4713ce6b68.wav
+📊 Tamaño: 38.27 MB
+📅 Fecha: 25/10/2025, 5:26:04
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🆓 ¿CÓMO TRANSCRIBIR TU ARCHIVO GRATIS?
+
+Opción Recomendada: USA LA GRABACIÓN EN TIEMPO REAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣ Reproduce tu archivo de audio en tu computadora
+2️⃣ Ve a la sección "🎤 OPCIÓN 1: Grabación en Tiempo Real"
+3️⃣ Click en "▶ Iniciar grabación"
+4️⃣ Permite el acceso al micrófono
+5️⃣ Reproduce el audio cerca del micrófono (o lee el contenido)
+6️⃣ La transcripción aparecerá automáticamente
+7️⃣ Click en "⏹ Detener" cuando termine
+8️⃣ Descarga en formato TXT o PDF
+
+✅ VENTAJAS:
+• 100% GRATIS - No requiere API Keys ni créditos
+• Funciona en Chrome, Edge y Safari
+• Precisión excelente (usa IA de Google/Microsoft)
+• Transcripción en tiempo real
+• Soporta español y otros idiomas
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 CONSEJOS PARA MEJOR CALIDAD:
+
+• Usa Chrome o Edge para mejor precisión
+• Habla claramente cerca del micrófono
+• Evita ruido de fondo
+• Si reproduces audio, ajusta el volumen moderado
+• Puedes pausar y reanudar la grabación cuando necesites
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 ALTERNATIVAS DE PAGO (Si necesitas procesar archivos directamente):
+
+1. OpenAI Whisper API
+   • Costo: ~$0.006 por minuto
+   • Configuración: Agrega OPENAI_API_KEY en .env
+   • Muy preciso, soporta 90+ idiomas
+
+2. Google Cloud Speech-to-Text
+   • Primeros 60 minutos gratis al mes
+   • Luego ~$0.006 por 15 segundos
+
+3. AWS Transcribe
+   • Primeros 60 minutos gratis al mes
+   • Luego ~$0.024 por minuto
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿PREGUNTAS FRECUENTES?
+
+Q: ¿Por qué no transcribe mi archivo directamente?
+A: La transcripción de archivos requiere servicios de pago (APIs). 
+   La única opción 100% gratuita es usar Web Speech API del navegador.
+
+Q: ¿Es buena la calidad con Web Speech API?
+A: ¡Sí! Usa los mismos motores que Google Assistant y Siri.
+   La precisión es excelente para español.
+
+Q: ¿Puedo transcribir videos de YouTube?
+A: Sí, reproduce el video y usa la grabación en tiempo real.
+   O usa los subtítulos automáticos de YouTube (gratis).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 ¡Empieza ahora! Ve a la sección de "Grabación en Tiempo Real"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

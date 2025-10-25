@@ -1,0 +1,61 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎙️ TRANSCRIPCIÓN GRATUITA CON HUGGING FACE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 Archivo: b35f305a624c42310c919f3f4161209e.wav
+📊 Tamaño: 1.29 MB
+📅 Fecha: 25/10/2025, 5:37:00
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ ¡BUENAS NOTICIAS! Puedes transcribir GRATIS con Hugging Face
+
+🔑 CÓMO OBTENER TU TOKEN GRATUITO (2 minutos):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣ Ve a: https://huggingface.co/join
+   • Crea una cuenta GRATIS (con email o Google)
+
+2️⃣ Ve a: https://huggingface.co/settings/tokens
+   • Click en "New token"
+   • Nombre: "transcripcion"
+   • Tipo: "read" (solo lectura)
+   • Click en "Generate token"
+   • Copia el token (empieza con "hf_...")
+
+3️⃣ Edita el archivo .env en este proyecto:
+   • Abre: .env
+   • Agrega esta línea:
+     HUGGINGFACE_API_KEY=hf_TuTokenAqui
+   • Guarda el archivo
+
+4️⃣ Reinicia la aplicación:
+   docker compose down
+   docker compose up --build -d
+
+5️⃣ ¡Listo! Sube tu archivo nuevamente
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ VENTAJAS DE HUGGING FACE:
+
+• 🆓 100% GRATIS para siempre
+• 🚫 NO requiere tarjeta de crédito
+• 🎯 Alta precisión (usa Whisper de OpenAI)
+• 🌍 Soporta 90+ idiomas
+• 📁 Transcribe archivos directamente
+• ⚡ Rápido y confiable
+
+⚠️ Límite: ~1000 solicitudes/día (más que suficiente)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 ALTERNATIVA: Grabación en Tiempo Real
+
+Si prefieres no crear cuenta, usa la "Grabación en Tiempo Real":
+• También 100% GRATIS
+• No requiere registro
+• Reproduce tu audio y grábalo en tiempo real
+• Funciona perfectamente
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
