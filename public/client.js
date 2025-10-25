@@ -9,6 +9,7 @@
   const downloadBtn = document.getElementById('downloadBtn');
   const formatSelect = document.getElementById('formatSelect');
   const preciseCheckbox = document.getElementById('preciseCheckbox');
+  const diarizeCheckbox = document.getElementById('diarizeCheckbox');
   const statusArea = document.getElementById('statusArea');
   const historyEl = document.getElementById('history');
   const fileName = document.getElementById('fileName');
@@ -314,8 +315,10 @@
     const fd = new FormData();
     fd.append('file', file);
     fd.append('precise', preciseCheckbox.checked ? 'true' : 'false');
+    fd.append('diarize', diarizeCheckbox.checked ? 'true' : 'false');
 
-    showStatus('Subiendo archivo...', 'info');
+    const isDiarizing = diarizeCheckbox.checked;
+    showStatus(isDiarizing ? 'Subiendo y detectando hablantes...' : 'Subiendo archivo...', 'info');
     updateProgress(10);
     uploadBtn.disabled = true;
     
@@ -373,7 +376,11 @@
       
       // Simulate processing progress
       updateProgress(50);
-      showStatus('Procesando y transcribiendo...', 'info');
+      if (isDiarizing) {
+        showStatus('Procesando, transcribiendo y detectando hablantes (puede tardar 1-2 min)...', 'info');
+      } else {
+        showStatus('Procesando y transcribiendo...', 'info');
+      }
       
     } catch (e) {
       console.error(e);

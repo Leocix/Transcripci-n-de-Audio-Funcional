@@ -103,6 +103,9 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
   // Check if client requested precise timestamps (form field 'precise')
   const usePrecise = req.body && req.body.precise === 'true';
+  
+  // Check if client requested automatic speaker detection (form field 'diarize')
+  const useDiarization = req.body && req.body.diarize === 'true';
 
   try {
     // Convert to wav (ffmpeg) to ensure compatibility
@@ -116,7 +119,10 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         .save(outAudio);
     });
 
-    const result = await transcribeFile(outAudio, { verbose: !!usePrecise });
+    const result = await transcribeFile(outAudio, { 
+      verbose: !!usePrecise,
+      diarize: !!useDiarization 
+    });
     const transcript = result && result.text ? result.text : '';
 
     // Prepare simple download files

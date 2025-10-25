@@ -1,0 +1,25 @@
+1
+00:00:00,000 --> 00:00:26,000
+❌ Error al procesar el archivo de audio/video
+
+El archivo no pudo ser procesado por Hugging Face.
+
+2
+00:00:26,000 --> 00:00:52,000
+✅ POSIBLES CAUSAS:
+
+1️⃣ Archivo muy grande (máximo 100 MB)
+   • Tamaño actual: 1.29 MB
+   • Reduce la calidad o duración del audio/video
+
+2️⃣ Formato incompatible
+   • Audio soportado: MP3, WAV, FLAC, OGG, M4A, AAC
+   • Video soportado: MP4, AVI, MOV, MKV
+   • Convierte en: https://convertio.co/es/
+
+3️⃣ Archivo corrupto o inválido
+   • Verifica que el archivo se reproduzca correctamente
+   • Prueba con otro archivo
+
+💡 SOLUCIÓN RÁPIDA: Usa la grabación en tiempo real (sin límites de tamaño)
+
