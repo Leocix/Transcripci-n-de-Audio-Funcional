@@ -368,7 +368,7 @@
           
           // Detectar error de archivo muy grande
           if (xhr.status === 413 || errorMsg.includes('too large') || errorMsg.includes('File too large')) {
-            showStatus('❌ Archivo demasiado grande. Máximo: 100 MB. Comprime el video o divide el archivo.', 'error');
+            showStatus('❌ Archivo demasiado grande. Máximo: 200 MB. Comprime el video o divide el archivo.', 'error');
           } else if (xhr.status === 400) {
             showStatus('❌ Error al procesar el archivo. Verifica el formato.', 'error');
           } else {

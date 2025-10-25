@@ -22,14 +22,14 @@ if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR);
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/tmp', express.static(TMP_DIR));
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
-// Multer for file uploads - Aumentado a 100MB y permitir videos
+// Multer for file uploads - Aumentado a 200MB y permitir videos
 const upload = multer({ 
   dest: path.join(TMP_DIR, 'uploads'),
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100 MB máximo por archivo
+    fileSize: 200 * 1024 * 1024, // 200 MB máximo por archivo
     files: 1, // Solo 1 archivo a la vez
     fields: 10, // Máximo 10 campos en el form
     fieldSize: 10 * 1024 * 1024, // 10 MB por campo
@@ -212,8 +212,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     // Manejar errores de Multer específicamente
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({ 
-        error: 'Archivo demasiado grande. Máximo permitido: 100 MB',
-        maxSize: '100 MB'
+        error: 'Archivo demasiado grande. Máximo permitido: 200 MB',
+        maxSize: '200 MB'
       });
     }
     
@@ -227,8 +227,8 @@ app.use((error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({
         error: 'Archivo demasiado grande',
-        message: 'El archivo excede el límite de 100 MB. Comprime el video o divídelo en partes más pequeñas.',
-        maxSize: '100 MB'
+        message: 'El archivo excede el límite de 200 MB. Comprime el video o divídelo en partes más pequeñas.',
+        maxSize: '200 MB'
       });
     }
     return res.status(400).json({ error: error.message });
