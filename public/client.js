@@ -174,11 +174,28 @@
     progressContainer.classList.add('active');
     progressBar.style.width = percent + '%';
     progressBar.textContent = percent + '%';
+    // Also show the numeric percent as aria label for accessibility
+    progressBar.setAttribute('aria-valuenow', percent);
+    const phaseEl = document.getElementById('progressPhase');
+    if (phaseEl) phaseEl.style.display = 'block';
   }
 
   function hideProgress() {
     progressContainer.classList.remove('active');
     progressBar.style.width = '0%';
+    const phaseEl = document.getElementById('progressPhase');
+    if (phaseEl) {
+      phaseEl.style.display = 'none';
+      phaseEl.textContent = '';
+    }
+  }
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
   function connectWS() {
@@ -324,29 +341,49 @@
     
     try {
       const xhr = new XMLHttpRequest();
-      
-      // Track upload progress
+      let processingInterval = null;
+
+      // Preparación
+      updateProgress(3);
+      const phaseEl = document.getElementById('progressPhase');
+      if (phaseEl) phaseEl.textContent = 'Preparando archivo...';
+
+      // Track upload progress and map to 5% - 55%
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
-          const percentComplete = Math.round((e.loaded / e.total) * 50);
-          updateProgress(percentComplete);
-          showStatus(`Subiendo archivo... ${percentComplete}%`, 'info');
+          const uploadPercent = Math.round((e.loaded / e.total) * 100);
+          // Map 0-100 upload to 5-55 progress
+          const mapped = Math.min(55, Math.max(5, Math.round(5 + (uploadPercent * 50) / 100)));
+          updateProgress(mapped);
+          const mbLoaded = formatBytes(e.loaded);
+          const mbTotal = formatBytes(e.total);
+          if (phaseEl) phaseEl.textContent = `Subiendo: ${mbLoaded} de ${mbTotal} (${uploadPercent}%)`;
+          showStatus(`Subiendo archivo... ${uploadPercent}%`, 'info');
         }
       };
-      
+
+      xhr.onloadstart = () => {
+        // Ensure progress container visible
+        updateProgress(5);
+      };
+
       xhr.onload = () => {
+        // Stop any simulated processing interval
+        if (processingInterval) clearInterval(processingInterval);
+
         if (xhr.status === 200) {
           updateProgress(100);
+          if (phaseEl) phaseEl.textContent = 'Combinando resultados y finalizando...';
           showStatus('Archivo procesado correctamente', 'success');
-          
+
           const json = JSON.parse(xhr.responseText);
           if (json.transcript) {
             transcriptEl.value = json.transcript;
           }
-          
+
           // Store downloads for later
           currentDownloads = json.downloads;
-          
+
           // Add to history
           const li = document.createElement('li');
           const date = new Date().toLocaleString('es-ES');
@@ -357,41 +394,65 @@
             currentDownloads = json.downloads;
           };
           historyEl.prepend(li);
-          
+
           setTimeout(() => {
             hideProgress();
             hideStatus();
-          }, 2000);
+          }, 1600);
         } else {
           hideProgress();
           const errorMsg = xhr.responseText || 'Error en el servidor';
-          
+
           // Detectar error de archivo muy grande
           if (xhr.status === 413 || errorMsg.includes('too large') || errorMsg.includes('File too large')) {
             showStatus('❌ Archivo demasiado grande. Máximo: 200 MB. Comprime el video o divide el archivo.', 'error');
           } else if (xhr.status === 400) {
             showStatus('❌ Error al procesar el archivo. Verifica el formato.', 'error');
           } else {
-            showStatus('❌ Error en el servidor: ' + errorMsg, 'error');
+            // Si el servidor envía JSON con detalles parciales (por ejemplo progreso por chunks), mostrarlo
+            try {
+              const parsed = JSON.parse(xhr.responseText);
+              if (parsed && parsed.message) {
+                showStatus('❌ Error en el servidor: ' + parsed.message, 'error');
+              } else {
+                showStatus('❌ Error en el servidor: ' + errorMsg, 'error');
+              }
+            } catch (err) {
+              showStatus('❌ Error en el servidor: ' + errorMsg, 'error');
+            }
           }
         }
       };
-      
+
       xhr.onerror = () => {
-        throw new Error('Error de red');
+        if (processingInterval) clearInterval(processingInterval);
+        hideProgress();
+        showStatus('Error de red durante la subida', 'error');
       };
-      
+
       xhr.open('POST', '/upload');
       xhr.send(fd);
-      
-      // Simulate processing progress
-      updateProgress(50);
-      if (isDiarizing) {
-        showStatus('Procesando, transcribiendo y detectando hablantes (puede tardar 1-2 min)...', 'info');
-      } else {
-        showStatus('Procesando y transcribiendo...', 'info');
-      }
-      
+
+      // Start a simulated processing progress after upload reaches ~55%.
+      // This will animate progress between 56% and 90% until the server responds.
+      let simulated = 56;
+      processingInterval = setInterval(() => {
+        // only animate if current progress below 90
+        const current = parseInt(progressBar.style.width) || 0;
+        if (current >= 90) return;
+        simulated += Math.floor(Math.random() * 3) + 1; // 1..3
+        if (simulated > 90) simulated = 90;
+        updateProgress(simulated);
+        const phaseEl2 = document.getElementById('progressPhase');
+        if (phaseEl2) {
+          if (isDiarizing) {
+            phaseEl2.textContent = `Procesando y detectando hablantes... (${simulated}%)`;
+          } else {
+            phaseEl2.textContent = `Transcribiendo en servidor... (${simulated}%)`;
+          }
+        }
+      }, 700);
+
     } catch (e) {
       console.error(e);
       showStatus('Error al subir o procesar: ' + e.message, 'error');
