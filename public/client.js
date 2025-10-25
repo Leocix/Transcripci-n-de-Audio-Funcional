@@ -15,6 +15,24 @@
   const fileName = document.getElementById('fileName');
   const progressContainer = document.getElementById('progressContainer');
   const progressBar = document.getElementById('progressBar');
+  // Ensure progressPhase element exists (in case index.html wasn't updated or is cached)
+  let progressPhase = document.getElementById('progressPhase');
+  if (!progressPhase) {
+    try {
+      progressPhase = document.createElement('div');
+      progressPhase.id = 'progressPhase';
+      progressPhase.style.marginTop = '8px';
+      progressPhase.style.fontSize = '13px';
+      progressPhase.style.color = '#374151';
+      progressPhase.style.display = 'none';
+      if (progressContainer && progressContainer.parentNode) {
+        progressContainer.parentNode.insertBefore(progressPhase, progressContainer.nextSibling);
+      }
+    } catch (e) {
+      // If DOM manipulation fails, ignore — updateProgress will guard
+      console.warn('No se pudo crear progressPhase dinámicamente:', e);
+    }
+  }
   const speakerInfo = document.getElementById('speakerInfo');
   const currentSpeakerLabel = document.getElementById('currentSpeakerLabel');
   const clearBtn = document.getElementById('clearBtn');
@@ -28,6 +46,10 @@
   let currentSpeaker = 1; // Empezar siempre con Persona-01
   let speakerCount = 1;
   let maxSpeakers = 2; // Número máximo de hablantes configurados
+  // Unique client id to correlate upload -> websocket updates
+  const clientId = 'cli-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
+  // processingInterval moved to outer scope so ws messages can cancel it
+  let processingInterval = null;
 
   // Función para actualizar UI del hablante
   function updateSpeakerUI() {
@@ -203,12 +225,25 @@
       ws = new WebSocket(((location.protocol === 'https:')? 'wss://' : 'ws://') + location.host);
       ws.onopen = () => {
         console.log('WS open');
+        // Register this page with the server so it can receive progress updates
+        try { ws.send(JSON.stringify({ type: 'register', clientId })); } catch (e) {}
         showStatus('Conexión WebSocket establecida', 'success');
         setTimeout(hideStatus, 2000);
       };
       ws.onmessage = (ev) => {
         let parsed;
         try { parsed = JSON.parse(ev.data); } catch (e) { return; }
+        // Handle server progress events
+        if (parsed.type === 'progress') {
+          // Stop simulated processing if running
+          if (processingInterval) { clearInterval(processingInterval); processingInterval = null; }
+          // Update progress and phase
+          const pct = typeof parsed.percent === 'number' ? parsed.percent : null;
+          if (pct !== null) updateProgress(Math.min(100, Math.max(0, pct)));
+          const phaseEl = document.getElementById('progressPhase');
+          if (phaseEl) phaseEl.textContent = parsed.message || (`${parsed.phase || 'Procesando'} ${parsed.index? `${parsed.index}/${parsed.total}`: ''}`);
+          return;
+        }
         if (parsed.type === 'transcript') {
           transcriptEl.value += parsed.text + '\n';
         }
@@ -333,6 +368,8 @@
     fd.append('file', file);
     fd.append('precise', preciseCheckbox.checked ? 'true' : 'false');
     fd.append('diarize', diarizeCheckbox.checked ? 'true' : 'false');
+  // attach clientId so server can push progress to our WS
+  fd.append('clientId', clientId);
 
     const isDiarizing = diarizeCheckbox.checked;
     showStatus(isDiarizing ? 'Subiendo y detectando hablantes...' : 'Subiendo archivo...', 'info');
@@ -341,7 +378,6 @@
     
     try {
       const xhr = new XMLHttpRequest();
-      let processingInterval = null;
 
       // Preparación
       updateProgress(3);

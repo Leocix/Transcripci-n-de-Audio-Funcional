@@ -16,6 +16,8 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+// Map to keep track of websocket clients by clientId (sent from browser)
+const wsClients = new Map();
 
 const TMP_DIR = path.join(__dirname, 'tmp');
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR);
@@ -74,6 +76,14 @@ wss.on('connection', (ws) => {
     let parsed;
     try { parsed = JSON.parse(msg); } catch (e) { return; }
 
+    // Allow client to register its clientId so server can send progress updates
+    if (parsed.type === 'register' && parsed.clientId) {
+      ws.clientId = parsed.clientId;
+      wsClients.set(parsed.clientId, ws);
+      console.log('WS registered clientId=', parsed.clientId);
+      return;
+    }
+
     if (parsed.type === 'chunk' && parsed.data) {
       // data is base64 string of a blob (webm/mp4)
       const b64 = parsed.data.replace(/^data:.+;base64,/, '');
@@ -97,8 +107,25 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     console.log('WS closed', connId);
+    // cleanup mapping if clientId was registered
+    if (ws.clientId && wsClients.has(ws.clientId)) {
+      wsClients.delete(ws.clientId);
+    }
   });
 });
+
+// Helper: send progress to client via WS if connected
+function sendProgressToClient(clientId, payload) {
+  try {
+    if (!clientId) return;
+    const sock = wsClients.get(clientId);
+    if (sock && sock.readyState === WebSocket.OPEN) {
+      sock.send(JSON.stringify({ type: 'progress', ...payload }));
+    }
+  } catch (e) {
+    console.warn('Failed to send progress to client', clientId, e?.message || e);
+  }
+}
 
 // Upload endpoint: receives audio or video, extracts audio, transcribes and returns result + download links
 app.post('/upload', upload.single('file'), async (req, res) => {
@@ -114,6 +141,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
   try {
     // Convert to wav (ffmpeg) to ensure compatibility
+    // Notify client (if present) that conversion started
+    try { sendProgressToClient(req.body && req.body.clientId, { phase: 'converting', percent: 5, message: 'Convirtiendo archivo a WAV...' }); } catch (e) {}
     await new Promise((resolve, reject) => {
       ffmpeg(origPath)
         .noVideo()
@@ -135,6 +164,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
       // Si es un error del servidor de Hugging Face, hacer split y retranscribir
       const isServerError = err?.response?.status === 500 || (err?.message && err.message.includes('Internal Error'));
       if (isServerError) {
+        // Notify client that chunking fallback will start
+        try { sendProgressToClient(req.body && req.body.clientId, { phase: 'chunking_start', percent: 10, message: 'Servicio HF falló; dividiendo audio en chunks...' }); } catch (e) {}
         // Crear carpeta temporal para chunks
         const chunkDir = path.join(TMP_DIR, `chunks-${Date.now()}`);
         if (!fs.existsSync(chunkDir)) fs.mkdirSync(chunkDir);
@@ -153,17 +184,25 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         const chunkFiles = fs.readdirSync(chunkDir)
           .filter(f => f.endsWith('.wav'))
           .sort();
-
         let combinedText = '';
-        for (const cf of chunkFiles) {
+        const total = chunkFiles.length;
+        for (let i = 0; i < chunkFiles.length; i++) {
+          const cf = chunkFiles[i];
           const chunkPath = path.join(chunkDir, cf);
           try {
             // Evitar recursión de chunking: pedimos sin intentar volver a chunkear
+            // Notify client about which chunk is being processed
+            const percentForChunk = 30 + Math.round(((i + 1) / total) * 50); // map chunks to 30-80
+            try { sendProgressToClient(req.body && req.body.clientId, { phase: 'chunk_processing', index: i + 1, total, percent: percentForChunk, message: `Transcribiendo chunk ${i + 1}/${total}...` }); } catch (e) {}
+
             const r = await transcribeFile(chunkPath, { ...opts, _noChunk: true });
             combinedText += (r && r.text ? r.text + '\n' : '');
+            // after successful chunk
+            try { sendProgressToClient(req.body && req.body.clientId, { phase: 'chunk_done', index: i + 1, total, percent: percentForChunk, message: `Chunk ${i + 1}/${total} completado` }); } catch (e) {}
           } catch (eChunk) {
             console.error('Error transcribiendo chunk', chunkPath, eChunk?.message || eChunk);
-            // Si un chunk falla, continuar con los demás
+            // If a chunk fails, notify client but continue
+            try { sendProgressToClient(req.body && req.body.clientId, { phase: 'chunk_error', index: i + 1, total, percent: 0, message: `Error en chunk ${i + 1}` }); } catch (e) {}
             combinedText += '';
           }
         }
@@ -173,8 +212,9 @@ app.post('/upload', upload.single('file'), async (req, res) => {
           for (const cf of fs.readdirSync(chunkDir)) fs.unlinkSync(path.join(chunkDir, cf));
           fs.rmdirSync(chunkDir);
         } catch (cleanupErr) { console.warn('No se pudo limpiar chunkDir', cleanupErr); }
-
         result = { text: combinedText, segments: null, raw: null };
+        // Notify client that chunk combination is happening
+        try { sendProgressToClient(req.body && req.body.clientId, { phase: 'combining', percent: 90, message: 'Combinando resultados de chunks...' }); } catch (e) {}
       } else {
         throw err; // Re-lanzar error no relacionado con HF 500
       }
