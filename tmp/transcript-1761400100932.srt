@@ -1,0 +1,4 @@
+1
+00:00:00,000 --> 00:00:06,000
+Esta es la prueba de audio desde una nota de voz de WhatsApp para comprobar si es que también funciona con MP3.
+

@@ -124,10 +124,61 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         .save(outAudio);
     });
 
-    const result = await transcribeFile(outAudio, { 
-      verbose: !!usePrecise,
-      diarize: !!useDiarization 
-    });
+    // Intentar transcribir el archivo completo. Si Hugging Face responde 500
+    // intentamos un fallback: dividir el audio en chunks y transcribirlos secuencialmente.
+    const opts = { verbose: !!usePrecise, diarize: !!useDiarization };
+    let result;
+    try {
+      result = await transcribeFile(outAudio, opts);
+    } catch (err) {
+      console.error('Transcribe error, intentando fallback por chunks:', err?.message || err);
+      // Si es un error del servidor de Hugging Face, hacer split y retranscribir
+      const isServerError = err?.response?.status === 500 || (err?.message && err.message.includes('Internal Error'));
+      if (isServerError) {
+        // Crear carpeta temporal para chunks
+        const chunkDir = path.join(TMP_DIR, `chunks-${Date.now()}`);
+        if (!fs.existsSync(chunkDir)) fs.mkdirSync(chunkDir);
+
+        // Dividir en segmentos de 60s usando ffmpeg (segment)
+        await new Promise((resolve, reject) => {
+          ffmpeg(outAudio)
+            .output(path.join(chunkDir, 'chunk-%03d.wav'))
+            .outputOptions(['-f', 'segment', '-segment_time', '60', '-reset_timestamps', '1'])
+            .on('end', () => resolve())
+            .on('error', (e) => reject(e))
+            .run();
+        });
+
+        // Leer y ordenar chunks
+        const chunkFiles = fs.readdirSync(chunkDir)
+          .filter(f => f.endsWith('.wav'))
+          .sort();
+
+        let combinedText = '';
+        for (const cf of chunkFiles) {
+          const chunkPath = path.join(chunkDir, cf);
+          try {
+            // Evitar recursión de chunking: pedimos sin intentar volver a chunkear
+            const r = await transcribeFile(chunkPath, { ...opts, _noChunk: true });
+            combinedText += (r && r.text ? r.text + '\n' : '');
+          } catch (eChunk) {
+            console.error('Error transcribiendo chunk', chunkPath, eChunk?.message || eChunk);
+            // Si un chunk falla, continuar con los demás
+            combinedText += '';
+          }
+        }
+
+        // Limpieza de chunks
+        try {
+          for (const cf of fs.readdirSync(chunkDir)) fs.unlinkSync(path.join(chunkDir, cf));
+          fs.rmdirSync(chunkDir);
+        } catch (cleanupErr) { console.warn('No se pudo limpiar chunkDir', cleanupErr); }
+
+        result = { text: combinedText, segments: null, raw: null };
+      } else {
+        throw err; // Re-lanzar error no relacionado con HF 500
+      }
+    }
     const transcript = result && result.text ? result.text : '';
 
     // Prepare simple download files
