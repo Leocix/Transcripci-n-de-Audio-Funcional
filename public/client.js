@@ -19,21 +19,56 @@
   let currentDownloads = null;
   let recognition = null;
   let isUsingWebSpeech = false;
-  let currentSpeaker = null;
-  let speakerCount = 0;
+  let currentSpeaker = 1; // Empezar siempre con Persona-01
+  let speakerCount = 1;
   let lastSpeakTime = 0;
-  const SPEAKER_CHANGE_THRESHOLD = 3000; // 3 segundos para cambiar de hablante
+  let speakerHistory = []; // Historial de frases por hablante
+  const SPEAKER_CHANGE_THRESHOLD = 8000; // 8 segundos para cambiar de hablante (más tiempo)
+  const MIN_WORDS_FOR_CHANGE = 15; // Mínimo de palabras antes de considerar cambio
+  
+  // Elementos adicionales
+  const speakerInfo = document.getElementById('speakerInfo');
+  const currentSpeakerLabel = document.getElementById('currentSpeakerLabel');
 
-  // Función para detectar cambio de hablante
-  function detectSpeakerChange() {
+  // Función para actualizar UI del hablante
+  function updateSpeakerUI() {
+    if (currentSpeakerLabel) {
+      currentSpeakerLabel.textContent = `Persona-${String(currentSpeaker).padStart(2, '0')}`;
+      currentSpeakerLabel.style.color = currentSpeaker === 1 ? '#667eea' : currentSpeaker === 2 ? '#f5576c' : '#4facfe';
+    }
+  }
+
+  // Función mejorada para detectar cambio de hablante
+  function detectSpeakerChange(transcript) {
     const now = Date.now();
     const timeSinceLastSpeak = now - lastSpeakTime;
+    const wordCount = transcript.trim().split(/\s+/).length;
     
-    if (timeSinceLastSpeak > SPEAKER_CHANGE_THRESHOLD && currentSpeaker !== null) {
-      currentSpeaker = null; // Resetear para asignar nuevo hablante
+    // Si es la primera frase, usar Persona-01
+    if (speakerHistory.length === 0) {
+      currentSpeaker = 1;
+      lastSpeakTime = now;
+      return false; // No cambiar
+    }
+    
+    // Solo considerar cambio si:
+    // 1. Han pasado más de 8 segundos
+    // 2. Y la frase tiene suficientes palabras (indica intervención completa)
+    if (timeSinceLastSpeak > SPEAKER_CHANGE_THRESHOLD && wordCount >= MIN_WORDS_FOR_CHANGE) {
+      // Alternar entre personas (máximo 3)
+      const lastSpeaker = currentSpeaker;
+      currentSpeaker = (currentSpeaker % 3) + 1;
+      
+      if (currentSpeaker > speakerCount) {
+        speakerCount = currentSpeaker;
+      }
+      
+      lastSpeakTime = now;
+      return true; // Hubo cambio
     }
     
     lastSpeakTime = now;
+    return false; // Mismo hablante
   }
 
   // Detectar navegador
@@ -66,16 +101,21 @@
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          detectSpeakerChange();
+          const changed = detectSpeakerChange(transcript);
           
-          // Asignar hablante si no hay uno actual
-          if (currentSpeaker === null) {
-            speakerCount++;
-            currentSpeaker = speakerCount;
+          if (changed) {
+            updateSpeakerUI(); // Actualizar UI cuando cambia
           }
           
           const speakerTag = `Persona-${String(currentSpeaker).padStart(2, '0')}`;
-          const speakerClass = `speaker-${((currentSpeaker - 1) % 3) + 1}`;
+          
+          // Guardar en historial
+          speakerHistory.push({
+            speaker: currentSpeaker,
+            text: transcript,
+            timestamp: Date.now()
+          });
+          
           finalTranscript += `[${speakerTag}] ${transcript}\n`;
         } else {
           interimTranscript += transcript;
@@ -186,8 +226,9 @@
     }
     
     // Resetear hablantes al iniciar nueva grabación
-    currentSpeaker = null;
-    speakerCount = 0;
+    currentSpeaker = 1; // Siempre empezar con Persona-01
+    speakerCount = 1;
+    speakerHistory = [];
     lastSpeakTime = Date.now();
     
     // Priorizar Web Speech API (gratuito)
@@ -198,6 +239,13 @@
         stopBtn.disabled = false;
         status.textContent = 'Grabando (Reconocimiento gratuito)...';
         status.classList.add('recording');
+        
+        // Mostrar info del hablante
+        if (speakerInfo) {
+          speakerInfo.style.display = 'block';
+          updateSpeakerUI();
+        }
+        
         showStatus('🎤 Usando reconocimiento de voz GRATUITO del navegador', 'success');
         setTimeout(hideStatus, 3000);
         return;
@@ -242,6 +290,11 @@
     // Detener Web Speech API
     if (recognition && isUsingWebSpeech) {
       recognition.stop();
+    }
+    
+    // Ocultar info del hablante
+    if (speakerInfo) {
+      speakerInfo.style.display = 'none';
     }
     
     // Detener MediaRecorder
